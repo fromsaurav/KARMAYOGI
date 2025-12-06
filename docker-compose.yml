@@ -55,6 +55,9 @@ services:
       RATE_LIMIT_MAX_REQUESTS: 100
       METRICS_PORT: 9090
       WEBSOCKET_CORS_ORIGIN: http://localhost:3000
+      # Go Services gRPC URLs
+      WORKER_SERVICE_URL: go-worker:50051
+      EXECUTOR_SERVICE_URL: go-executor:50052
     ports:
       - "3000:3000"
       - "9090:9090"
@@ -62,6 +65,10 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      go-worker:
+        condition: service_healthy
+      go-executor:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
@@ -105,6 +112,57 @@ services:
       - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
     depends_on:
       - prometheus
+
+  # Go Worker Service - High-performance job processing with goroutines
+  go-worker:
+    build:
+      context: ./go-services/worker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      WORKER_PORT: 50051
+      DATABASE_URL: postgresql://karmayogi_user:karmayogi_password@postgres:5432/karmayogi
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      WORKER_POOL_SIZE: 1000
+    ports:
+      - "50051:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "50051"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # Go Executor Service - Specialized job type handlers
+  go-executor:
+    build:
+      context: ./go-services/executor
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      EXECUTOR_PORT: 50052
+      DATABASE_URL: postgresql://karmayogi_user:karmayogi_password@postgres:5432/karmayogi
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "50052:50052"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "50052"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
 volumes:
   postgres_data:

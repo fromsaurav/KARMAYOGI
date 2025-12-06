@@ -276,7 +276,44 @@ lib-cov/
 # ===== WINDOWS =====
 ehthumbs_vista.db
 
+# ===== GO SERVICES =====
+# Go binary outputs
+go-services/*/bin/
+go-services/**/bin/
+go-services/worker/worker
+go-services/executor/executor
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test files
+*.test
+*.out
+
+# Go vendor directory
+go-services/*/vendor/
+go-services/**/vendor/
+
+# Go module cache
+go-services/*/go.sum
+go-services/**/go.sum
+
+# Go coverage
+*.coverprofile
+coverage.txt
+coverage.html
+
+# Generated protobuf files (keep source .proto, ignore generated)
+go-services/**/*_grpc.pb.go
+go-services/**/*.pb.go
+
 # ===== KEEP THESE (NEGATION) =====
 !.gitkeep
 !.github/
 !.husky/
+# Keep proto source files
+!go-services/**/*.proto

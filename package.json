@@ -34,6 +34,8 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.115",
+    "@grpc/grpc-js": "^1.14.2",
+    "@grpc/proto-loader": "^0.8.0",
     "@prisma/client": "^6.14.0",
     "@sendgrid/mail": "^8.1.5",
     "@types/bcryptjs": "^2.4.6",

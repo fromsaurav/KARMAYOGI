@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package executor;
+
+option go_package = ".;main";
+
+// Executor Service - Specific Job Type Handlers
+service ExecutorService {
+  // Execute file processing job
+  rpc ProcessFile(FileJobRequest) returns (FileJobResponse);
+
+  // Execute data analytics job
+  rpc AnalyzeData(AnalyticsJobRequest) returns (AnalyticsJobResponse);
+
+  // Execute email sending job
+  rpc SendEmail(EmailJobRequest) returns (EmailJobResponse);
+
+  // Execute API integration job
+  rpc CallAPI(APIJobRequest) returns (APIJobResponse);
+
+  // Execute custom script
+  rpc RunScript(ScriptJobRequest) returns (ScriptJobResponse);
+}
+
+// File Processing
+message FileJobRequest {
+  string job_id = 1;
+  string file_path = 2;
+  string file_type = 3;  // csv, json, xml, etc.
+  string operation = 4;  // parse, transform, validate
+  string config = 5;     // JSON config
+}
+
+message FileJobResponse {
+  string job_id = 1;
+  bool success = 2;
+  string output_path = 3;
+  int32 records_processed = 4;
+  string error = 5;
+  map<string, string> stats = 6;
+}
+
+// Data Analytics
+message AnalyticsJobRequest {
+  string job_id = 1;
+  string data_source = 2;
+  string query = 3;
+  repeated string aggregations = 4;
+  map<string, string> filters = 5;
+}
+
+message AnalyticsJobResponse {
+  string job_id = 1;
+  bool success = 2;
+  string results = 3;  // JSON results
+  int32 rows_analyzed = 4;
+  string error = 5;
+}
+
+// Email Sending
+message EmailJobRequest {
+  string job_id = 1;
+  repeated string recipients = 2;
+  string subject = 3;
+  string body = 4;
+  string html_body = 5;
+  repeated string attachments = 6;
+  string from_address = 7;
+}
+
+message EmailJobResponse {
+  string job_id = 1;
+  bool success = 2;
+  int32 emails_sent = 3;
+  int32 emails_failed = 4;
+  string error = 5;
+  repeated string failed_recipients = 6;
+}
+
+// API Integration
+message APIJobRequest {
+  string job_id = 1;
+  string url = 2;
+  string method = 3;  // GET, POST, PUT, DELETE
+  map<string, string> headers = 4;
+  string body = 5;
+  int32 timeout = 6;
+  int32 retries = 7;
+}
+
+message APIJobResponse {
+  string job_id = 1;
+  bool success = 2;
+  int32 status_code = 3;
+  string response_body = 4;
+  map<string, string> response_headers = 5;
+  string error = 6;
+  int32 duration_ms = 7;
+}
+
+// Custom Script
+message ScriptJobRequest {
+  string job_id = 1;
+  string script_type = 2;  // python, bash, node
+  string script_content = 3;
+  repeated string args = 4;
+  map<string, string> env = 5;
+  int32 timeout = 6;
+}
+
+message ScriptJobResponse {
+  string job_id = 1;
+  bool success = 2;
+  string stdout = 3;
+  string stderr = 4;
+  int32 exit_code = 5;
+  string error = 6;
+}

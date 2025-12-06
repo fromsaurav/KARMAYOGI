@@ -67,8 +67,13 @@ export async function submitJob(req: Request, res: Response): Promise<void> {
       data: jobPayload  // Frontend expects 'data', backend has 'payload'
     };
 
-    // Broadcast job creation to all connected clients
-    broadcastJobCreated(transformedJob, userId);
+    // Broadcast job creation to all connected clients (non-blocking)
+    try {
+      broadcastJobCreated(transformedJob, userId);
+    } catch (broadcastError) {
+      logger.error('Failed to broadcast job creation:', broadcastError);
+      // Continue - don't fail the request if broadcast fails
+    }
 
     res.status(201).json({
       success: true,
@@ -78,10 +83,12 @@ export async function submitJob(req: Request, res: Response): Promise<void> {
 
   } catch (error) {
     logger.error('Submit job error:', error);
+    console.error('Full error details:', error);
 
     res.status(500).json({
       success: false,
-      message: 'Internal server error while submitting job'
+      message: 'Internal server error while submitting job',
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 }

@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package worker;
+
+option go_package = ".;main";
+
+// Worker Service - Job Processing
+service WorkerService {
+  // Process a single job
+  rpc ProcessJob(JobRequest) returns (JobResponse);
+
+  // Get worker pool status
+  rpc GetWorkerStatus(Empty) returns (WorkerStatus);
+
+  // Cancel a running job
+  rpc CancelJob(CancelRequest) returns (CancelResponse);
+
+  // Stream job updates in real-time
+  rpc StreamJobUpdates(JobRequest) returns (stream JobUpdate);
+}
+
+// Job Request
+message JobRequest {
+  string job_id = 1;
+  string job_type = 2;
+  string payload = 3;  // JSON payload
+  int32 priority = 4;
+  int32 timeout = 5;   // seconds
+  string user_id = 6;
+  map<string, string> metadata = 7;
+}
+
+// Job Response
+message JobResponse {
+  string job_id = 1;
+  string status = 2;   // pending, running, completed, failed
+  string result = 3;   // JSON result
+  string error = 4;
+  int64 started_at = 5;
+  int64 completed_at = 6;
+  int32 duration_ms = 7;
+}
+
+// Job Update (for streaming)
+message JobUpdate {
+  string job_id = 1;
+  string status = 2;
+  int32 progress = 3;  // 0-100
+  string message = 4;
+  int64 timestamp = 5;
+}
+
+// Worker Status
+message WorkerStatus {
+  int32 active_workers = 1;
+  int32 idle_workers = 2;
+  int32 queue_size = 3;
+  int32 jobs_processed = 4;
+  int32 jobs_failed = 5;
+  float cpu_usage = 6;
+  float memory_usage = 7;
+  repeated WorkerInfo workers = 8;
+}
+
+message WorkerInfo {
+  string worker_id = 1;
+  string status = 2;
+  string current_job_id = 3;
+  int64 started_at = 4;
+}
+
+// Cancel Request
+message CancelRequest {
+  string job_id = 1;
+  string reason = 2;
+}
+
+// Cancel Response
+message CancelResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Empty message
+message Empty {}
