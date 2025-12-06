@@ -1,0 +1,282 @@
+# ============================================
+# COMPREHENSIVE .GITIGNORE FOR KARMAYOGI
+# ============================================
+
+# ===== ENVIRONMENT & SECRETS =====
+.env
+.env.*
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*/.env
+*/.env.*
+*.pem
+*.key
+*.cert
+secrets/
+config/secrets/
+
+# ===== NODE.JS & NPM =====
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.npm
+.yarn-integrity
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ===== NEXT.JS (FRONTEND) =====
+.next/
+**/.next/
+out/
+**/out/
+.vercel
+**/.vercel
+.swc/
+
+# ===== BUILD OUTPUTS =====
+build/
+**/build/
+dist/
+**/dist/
+*.tsbuildinfo
+next-env.d.ts
+**/next-env.d.ts
+
+# ===== PYTHON (BACKEND) =====
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.pytest_cache/
+.hypothesis/
+*.cover
+*.py,cover
+.pytype/
+cython_debug/
+
+# Python virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+**/venv/
+**/env/
+
+# Python build artifacts (but not TypeScript lib/)
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+**/lib/python*/
+**/lib64/
+
+# ===== DATABASES =====
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+db.sqlite3
+db.sqlite3-journal
+*.log
+postgres-data/
+mysql-data/
+redis-data/
+
+# ===== LOGS =====
+logs/
+**/logs/
+*.log
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+backend.log
+frontend.log
+combined.log
+error.log
+access.log
+debug.log
+
+# ===== REDIS =====
+dump.rdb
+*.rdb
+
+# ===== DOCKER =====
+docker-compose.override.yml
+.dockerignore
+
+# ===== TESTING & COVERAGE =====
+/coverage
+**/coverage
+.nyc_output
+junit.xml
+test-results/
+*.test.js.snap
+coverage/
+.jest/
+
+# ===== IDE & EDITORS =====
+# VSCode
+.vscode/
+*.code-workspace
+.history/
+
+# JetBrains (PyCharm, WebStorm, IntelliJ)
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ===== OPERATING SYSTEMS =====
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.AppleDouble
+.LSOverride
+Icon
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===== TEMPORARY & CACHE =====
+*.tmp
+*.temp
+*.cache
+*.bak
+*.backup
+*.orig
+*.old
+.cache/
+tmp/
+temp/
+*.pid
+*.seed
+*.pid.lock
+.sass-cache/
+.eslintcache
+.stylelintcache
+.parcel-cache/
+.turbo/
+
+# ===== MISC FILES =====
+cookies.txt
+*.csv
+*.dat
+*.zip
+*.tar.gz
+*.rar
+
+# ===== EDITOR SPECIFIC =====
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.tmproj
+*.tmproject
+tmtags
+
+# ===== RUNTIME DATA =====
+pids/
+*.pid
+*.seed
+*.pid.lock
+lib-cov/
+
+# ===== MACOS =====
+.CFUserTextEncoding
+
+# ===== WINDOWS =====
+ehthumbs_vista.db
+
+# ===== KEEP THESE (NEGATION) =====
+!.gitkeep
+!.github/
+!.husky/

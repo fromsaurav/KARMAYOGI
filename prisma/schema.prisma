@@ -1,0 +1,433 @@
+// Prisma schema for Karmayogi task queue system
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  fullName    String
+  username    String   @unique
+  email       String   @unique
+  password    String   @db.VarChar(255)
+  profilePic  String   @default("")
+  role        UserRole @default(USER)
+  isActive    Boolean  @default(true)
+  managerId   String?  // For Manager relationship
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations (keeping existing job system)
+  jobs       Job[]    @relation("UserJobs")
+  rateLimits UserRateLimit[]
+
+  // Manager relationships
+  managedUsers User[] @relation("ManagerSubordinates")
+  manager     User?  @relation("ManagerSubordinates", fields: [managerId], references: [id])
+
+  // Phase 4: Task Templates
+  templates JobTemplate[]
+  favoriteTemplates FavoriteTemplate[]
+
+  // Phase 5: Collaboration & Audit
+  comments JobComment[]
+  watchedJobs JobWatcher[]
+  handoffsGiven JobHandoff[] @relation("HandoffsGiven")
+  handoffsReceived JobHandoff[] @relation("HandoffsReceived")
+  statusChanges JobStatusChange[]
+  webhooks Webhook[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+model Job {
+  id           String      @id @default(uuid())
+  type         JobType
+  status       JobStatus   @default(PENDING)
+  priority     JobPriority @default(MEDIUM)
+  payload      Json
+  result       Json?
+  error        String?
+  progress     Int         @default(0)
+  maxRetries   Int         @default(3)
+  currentRetry Int         @default(0)
+  delay        Int?
+  metadata     Json?
+
+  // Worker tracking
+  workerId     String?     // Which worker is processing this job
+  failedAt     DateTime?   // When the job failed
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+  scheduledAt DateTime?
+
+  // Relations
+  userId    String
+  managerId String?  // Track who can oversee this task
+  user      User     @relation("UserJobs", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Job dependencies
+  dependencies     JobDependency[] @relation("ParentJob")
+  dependents       JobDependency[] @relation("DependentJob")
+
+  // Job logs
+  logs JobLog[]
+
+  // Phase 5: Collaboration
+  comments JobComment[]
+  watchers JobWatcher[]
+  handoffs JobHandoff[]
+  statusChangeHistory JobStatusChange[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([type])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([workerId])
+  @@map("jobs")
+}
+
+model JobDependency {
+  id String @id @default(uuid())
+
+  parentJobId    String
+  dependentJobId String
+
+  parentJob    Job @relation("ParentJob", fields: [parentJobId], references: [id], onDelete: Cascade)
+  dependentJob Job @relation("DependentJob", fields: [dependentJobId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([parentJobId, dependentJobId])
+  @@map("job_dependencies")
+}
+
+model JobLog {
+  id        String   @id @default(uuid())
+  jobId     String
+  level     LogLevel
+  message   String
+  timestamp DateTime @default(now())
+  metadata  Json?
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([timestamp])
+  @@map("job_logs")
+}
+
+model UserRateLimit {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String
+  requests  Int      @default(0)
+  windowStart DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@map("user_rate_limits")
+}
+
+model WorkerHealth {
+  id              String            @id @default(uuid())
+  workerId        String            @unique
+  status          WorkerStatus      @default(IDLE)
+  lastHeartbeat   DateTime          @default(now())
+  processedJobs   Int               @default(0)
+  errors          Int               @default(0)
+  uptime          Int               @default(0)
+  currentJobId    String?
+  metadata        Json?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("worker_health")
+}
+
+model QueueStats {
+  id          String   @id @default(uuid())
+  queueName   String
+  waiting     Int      @default(0)
+  active      Int      @default(0)
+  completed   Int      @default(0)
+  failed      Int      @default(0)
+  delayed     Int      @default(0)
+  paused      Boolean  @default(false)
+  timestamp   DateTime @default(now())
+
+  @@index([queueName])
+  @@index([timestamp])
+  @@map("queue_stats")
+}
+
+// Phase 4: Job Template System
+model JobTemplate {
+  id          String      @id @default(uuid())
+  userId      String
+  name        String
+  description String?
+  jobType     JobType
+  priority    JobPriority @default(MEDIUM)
+  config      Json        // Stores payload structure, default values
+  tags        String[]    // For categorization and search
+  isPublic    Boolean     @default(false) // Admins can make templates public
+  usageCount  Int         @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favorites FavoriteTemplate[]
+
+  @@index([userId])
+  @@index([isPublic])
+  @@index([jobType])
+  @@map("job_templates")
+}
+
+model FavoriteTemplate {
+  id         String   @id @default(uuid())
+  userId     String
+  templateId String
+
+  createdAt  DateTime @default(now())
+
+  // Relations
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template JobTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, templateId])
+  @@index([userId])
+  @@map("favorite_templates")
+}
+
+// Phase 4: Alert System
+model SystemAlert {
+  id        String           @id @default(uuid())
+  level     AlertLevel
+  type      AlertType
+  message   String
+  action    String?          // Suggested action for user
+  data      Json?            // Additional context data
+  resolved  Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+
+  @@index([level])
+  @@index([type])
+  @@index([resolved])
+  @@index([createdAt])
+  @@map("system_alerts")
+}
+
+// Phase 5: Advanced Analytics
+model QueueSnapshot {
+  id          String   @id @default(uuid())
+  timestamp   DateTime @default(now())
+  waiting     Int
+  active      Int
+  completed   Int
+  failed      Int
+  delayed     Int
+  workerCount Int
+
+  @@index([timestamp])
+  @@map("queue_snapshots")
+}
+
+// Phase 5: Collaboration Features
+model JobComment {
+  id        String   @id @default(uuid())
+  jobId     String
+  userId    String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("job_comments")
+}
+
+model JobWatcher {
+  jobId     String
+  userId    String
+  createdAt DateTime @default(now())
+
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, userId])
+  @@map("job_watchers")
+}
+
+model JobHandoff {
+  id         String   @id @default(uuid())
+  jobId      String
+  fromUserId String
+  toUserId   String
+  message    String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  job      Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  fromUser User @relation("HandoffsGiven", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("HandoffsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@map("job_handoffs")
+}
+
+model JobStatusChange {
+  id         String   @id @default(uuid())
+  jobId      String
+  userId     String?
+  fromStatus String
+  toStatus   String
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  job  Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("job_status_changes")
+}
+
+// Phase 5: Webhook System
+model Webhook {
+  id              String   @id @default(uuid())
+  userId          String
+  name            String
+  url             String
+  events          String[]
+  secret          String
+  payloadTemplate Json?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@index([userId])
+  @@map("webhooks")
+}
+
+model WebhookDelivery {
+  id            String   @id @default(uuid())
+  webhookId     String
+  event         String
+  payload       Json
+  status        String // success, failed
+  statusCode    Int?
+  responseBody  String?  @db.Text
+  errorMessage  String?  @db.Text
+  attemptNumber Int
+  createdAt     DateTime @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([createdAt])
+  @@map("webhook_deliveries")
+}
+
+// Phase 5: Audit & Compliance
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?
+  action       String
+  resource     String
+  resourceId   String?
+  method       String
+  path         String
+  statusCode   Int
+  duration     Int
+  ipAddress    String?
+  userAgent    String?  @db.Text
+  requestBody  Json?
+  responseBody Json?
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+
+enum JobType {
+  FILE_PROCESSING
+  DATA_ANALYTICS
+  EMAIL_TASK
+  API_INTEGRATION
+  CUSTOM_SCRIPT
+}
+
+enum JobStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  FAILED
+  CANCELLED
+  DELAYED
+}
+
+enum JobPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  DEBUG
+}
+
+enum WorkerStatus {
+  HEALTHY
+  UNHEALTHY
+  IDLE
+  BUSY
+}
+
+enum UserRole {
+  USER
+  MANAGER
+  ADMIN
+}
+
+enum AlertLevel {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AlertType {
+  QUEUE_DEPTH
+  FAILURE_RATE
+  WORKER_HEALTH
+  SYSTEM_PERFORMANCE
+}
