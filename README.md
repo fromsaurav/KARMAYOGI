@@ -300,21 +300,6 @@ docs/IMPLEMENTATION_SUMMARY.md
 
 ---
 
-## 📄 License
-
-MIT License — see `LICENSE` file
-
----
-
-## 👨‍💻 Developer
-
-**Saurav Ganesh Teli**
-GitHub: `fromsaurav`
-LinkedIn: `Saurav Teli`
-Email: `telisaurav44@gmail.com`
-
----
-
 ## 🌟 Acknowledgments
 
 * Bull Queue
@@ -333,6 +318,22 @@ Email: `telisaurav44@gmail.com`
 * ML-based workload prediction
 * Slack/Teams integration
 * Advanced scheduling (cron jobs)
+
+---
+
+## 📄 License
+
+MIT License — see `LICENSE` file
+
+---
+
+## 👨‍💻 Developer
+
+**Saurav Teli**  
+GitHub: [fromsaurav](https://github.com/fromsaurav)  
+LinkedIn: [Saurav Teli](https://www.linkedin.com/in/saurav-teli-89a27a263/)  
+Website: [www.fromsaurav.tech](https://www.fromsaurav.tech/)  
+Email: telisaurav44@gmail.com
 
 ---
 
