@@ -1,4 +1,4 @@
-# KarmaYogi - Distributed Task Queue Management System
+# KarmaYogi - Distributed Job Queue System
 
 A production-grade distributed task queue system with real-time monitoring, role-based access control, and high-performance Go workers.
 
