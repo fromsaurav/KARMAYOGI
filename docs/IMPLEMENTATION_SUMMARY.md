@@ -166,6 +166,8 @@ cd ~/Saurav/Projects/KarmaYogi
 
 # Stop system Redis if running
 sudo systemctl stop redis-server
+sudo systemctl stop postgresql
+verify - sudo lsof -i :5432
 
 # Start Docker containers
 sudo docker-compose up postgres redis

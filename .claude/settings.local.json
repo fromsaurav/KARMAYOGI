@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//tmp/**)",
+      "Bash(docker exec:*)",
+      "Bash(npx prisma migrate:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
