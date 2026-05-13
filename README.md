@@ -125,7 +125,7 @@ npm install
 ### **4️⃣ Start Infrastructure (Docker)**
 
 ```bash
-docker-compose up postgres redis
+docker-compose up -d postgres redis
 ```
 
 ### **5️⃣ Database Setup**
