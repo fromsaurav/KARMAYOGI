@@ -438,6 +438,16 @@ export async function getDashboardStats(req: Request, res: Response): Promise<vo
   }
 }
 
+/**
+ * Returns jobs grouped into Kanban columns (QUEUED / PROCESSING / COMPLETED / FAILED).
+ *
+ * Role-based scoping:
+ *   - USER    → only jobs owned by the requesting user (where.userId = req.user.userId)
+ *   - MANAGER → all jobs in the system (no userId filter)
+ *   - ADMIN   → all jobs in the system (no userId filter)
+ *
+ * Capped at 200 records per request; ordered by priority descending.
+ */
 export async function getKanbanJobs(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user?.userId;
