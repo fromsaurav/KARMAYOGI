@@ -479,18 +479,35 @@ export async function getKanbanJobs(req: Request, res: Response): Promise<void> 
       take: 200
     });
 
-    const result = { jobs, total: jobs.length };
+    type DbJobRow = typeof jobs[number];
+
+    interface KanbanJob {
+      id: string;
+      title: string;
+      type: string;
+      priority: string;
+      status: string;
+      assignees: string[];
+      createdAt: Date;
+      updatedAt: Date;
+      progress: number;
+      tags: string[];
+      comments: number;
+      attachments: number;
+      data: unknown;
+      createdBy: string | undefined;
+    }
 
     // Group jobs by status for kanban board
-    const groupedJobs = {
-      QUEUED: [] as any[],
-      PROCESSING: [] as any[],
-      COMPLETED: [] as any[],
-      FAILED: [] as any[]
+    const groupedJobs: Record<'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED', KanbanJob[]> = {
+      QUEUED: [],
+      PROCESSING: [],
+      COMPLETED: [],
+      FAILED: []
     };
 
-    result.jobs.forEach((job: any) => {
-      const kanbanJob = {
+    jobs.forEach((job: DbJobRow) => {
+      const kanbanJob: KanbanJob = {
         id: job.id,
         title: job.type.replace(/_/g, ' '),
         type: job.type,
