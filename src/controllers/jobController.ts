@@ -451,9 +451,13 @@ export async function getKanbanJobs(req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Fetch all jobs in the system for all users to see
-    // This allows team collaboration where users can see jobs created by admins/managers
+    // Regular users see only their own jobs; managers and admins see all
+    const where = (userRole === UserRole.MANAGER || userRole === UserRole.ADMIN)
+      ? {}
+      : { userId };
+
     const jobs = await prisma.job.findMany({
+      where,
       include: {
         user: {
           select: { id: true, email: true, fullName: true }
@@ -462,7 +466,7 @@ export async function getKanbanJobs(req: Request, res: Response): Promise<void> 
       orderBy: {
         priority: 'desc'
       },
-      take: 1000
+      take: 200
     });
 
     const result = { jobs, total: jobs.length };
