@@ -6,7 +6,8 @@ import {
   cancelJob,
   retryJob,
   getJobLogs,
-  getJobStats
+  getJobStats,
+  updateJobStatus as updateJobStatusInDB
 } from '../services/jobService';
 import { getQueueStats } from '../queues/queueManager';
 import { logger } from '../utils/logger';
@@ -560,16 +561,10 @@ export async function updateJobStatus(req: Request, res: Response): Promise<void
       return;
     }
 
-    // Record status change in database for audit trail
-    await prisma.jobStatusChange.create({
-      data: {
-        jobId,
-        userId,
-        fromStatus: job.status,
-        toStatus: status,
-        reason: req.body.reason || undefined
-      }
-    });
+    const previousStatus = job.status;
+
+    // Persist the new status to the job record in the database
+    await updateJobStatusInDB(jobId, status);
 
     // Broadcast status change to all connected clients
     broadcastJobStatusChange(jobId, status, userId);
@@ -580,7 +575,7 @@ export async function updateJobStatus(req: Request, res: Response): Promise<void
       data: {
         jobId,
         newStatus: status,
-        previousStatus: job.status
+        previousStatus
       }
     });
 
