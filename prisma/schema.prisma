@@ -96,6 +96,7 @@ model Job {
   @@index([userId])
   @@index([createdAt])
   @@index([workerId])
+  @@index([status, scheduledAt])
   @@map("jobs")
 }
 
