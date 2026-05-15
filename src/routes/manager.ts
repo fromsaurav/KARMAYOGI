@@ -117,36 +117,36 @@ router.get('/team/members', async (req: Request, res: Response) => {
       }
     });
 
-    // Calculate stats for each member
-    const membersWithStats = await Promise.all(
-      teamMembers.map(async (member) => {
-        const [totalJobs, activeJobs, completedJobs, failedJobs] = await Promise.all([
-          prisma.job.count({ where: { userId: member.id } }),
-          prisma.job.count({
-            where: {
-              userId: member.id,
-              status: { in: [JobStatus.PENDING, JobStatus.ACTIVE] }
-            }
-          }),
-          prisma.job.count({
-            where: { userId: member.id, status: JobStatus.COMPLETED }
-          }),
-          prisma.job.count({
-            where: { userId: member.id, status: JobStatus.FAILED }
-          })
-        ]);
+    const teamMemberIds = teamMembers.map(m => m.id);
 
-        return {
-          ...member,
-          stats: {
-            totalJobs,
-            activeJobs,
-            completedJobs,
-            failedJobs
-          }
-        };
-      })
+    // Single grouped query replaces 4 × job.count per member
+    const jobCountRows = await prisma.job.groupBy({
+      by: ['userId', 'status'],
+      where: { userId: { in: teamMemberIds } },
+      _count: { id: true }
+    });
+
+    type MemberStats = { totalJobs: number; activeJobs: number; completedJobs: number; failedJobs: number };
+    const statsByUser = new Map<string, MemberStats>(
+      teamMemberIds.map(id => [id, { totalJobs: 0, activeJobs: 0, completedJobs: 0, failedJobs: 0 }])
     );
+    for (const row of jobCountRows) {
+      const entry = statsByUser.get(row.userId)!;
+      const n = row._count.id;
+      entry.totalJobs += n;
+      if (row.status === JobStatus.PENDING || row.status === JobStatus.ACTIVE) {
+        entry.activeJobs += n;
+      } else if (row.status === JobStatus.COMPLETED) {
+        entry.completedJobs = n;
+      } else if (row.status === JobStatus.FAILED) {
+        entry.failedJobs = n;
+      }
+    }
+
+    const membersWithStats = teamMembers.map(member => ({
+      ...member,
+      stats: statsByUser.get(member.id) ?? { totalJobs: 0, activeJobs: 0, completedJobs: 0, failedJobs: 0 }
+    }));
 
     res.json({
       success: true,
