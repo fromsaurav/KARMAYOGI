@@ -6,38 +6,55 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding database...');
 
-  // Create a test user for login
-  const testUserPassword = await bcrypt.hash('testpassword123', 12);
-  
+  const hash = (pw: string) => bcrypt.hash(pw, 12);
+
+  const [userPw, managerPw, adminPw] = await Promise.all([
+    hash('testpassword123'),
+    hash('manager123456'),
+    hash('admin123456'),
+  ]);
+
   const testUser = await prisma.user.upsert({
     where: { email: 'test@example.com' },
     update: {},
     create: {
-      name: 'Test User',
+      fullName: 'Test User',
+      username: 'testuser',
       email: 'test@example.com',
-      password: testUserPassword,
+      password: userPw,
       role: UserRole.USER,
     },
   });
 
-  // Create an admin user
-  const adminPassword = await bcrypt.hash('admin123456', 12);
-  
+  const managerUser = await prisma.user.upsert({
+    where: { email: 'manager@example.com' },
+    update: {},
+    create: {
+      fullName: 'Manager User',
+      username: 'manager',
+      email: 'manager@example.com',
+      password: managerPw,
+      role: UserRole.MANAGER,
+    },
+  });
+
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@example.com' },
     update: {},
     create: {
-      name: 'Admin User',
+      fullName: 'Admin User',
+      username: 'admin',
       email: 'admin@example.com',
-      password: adminPassword,
+      password: adminPw,
       role: UserRole.ADMIN,
     },
   });
 
-  console.log('Created users:', {
-    testUser: { name: testUser.name, email: testUser.email, role: testUser.role },
-    adminUser: { name: adminUser.name, email: adminUser.email, role: adminUser.role }
-  });
+  console.log('Created users:', [
+    { fullName: testUser.fullName,    email: testUser.email,    role: testUser.role },
+    { fullName: managerUser.fullName, email: managerUser.email, role: managerUser.role },
+    { fullName: adminUser.fullName,   email: adminUser.email,   role: adminUser.role },
+  ]);
 
   console.log('Seeding completed!');
 }
