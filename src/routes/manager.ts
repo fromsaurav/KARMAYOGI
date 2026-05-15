@@ -342,69 +342,64 @@ router.get('/team/workload', async (req: Request, res: Response) => {
       }
     });
 
-    const workloadData = await Promise.all(
-      teamMembers.map(async (member) => {
-        const [activeJobs, queuedJobs, avgCompletionTime] = await Promise.all([
-          prisma.job.count({
-            where: {
-              userId: member.id,
-              status: JobStatus.ACTIVE
-            }
-          }),
-          prisma.job.count({
-            where: {
-              userId: member.id,
-              status: JobStatus.PENDING
-            }
-          }),
-          prisma.job.aggregate({
-            where: {
-              userId: member.id,
-              status: JobStatus.COMPLETED,
-              startedAt: { not: null },
-              completedAt: { not: null }
-            },
-            _avg: {
-              progress: true
-            }
-          })
-        ]);
+    const teamMemberIds = teamMembers.map(m => m.id);
 
-        // Calculate average completion time
-        const completedJobs = await prisma.job.findMany({
-          where: {
-            userId: member.id,
-            status: JobStatus.COMPLETED,
-            startedAt: { not: null },
-            completedAt: { not: null }
-          },
-          select: {
-            startedAt: true,
-            completedAt: true
-          },
-          take: 50
-        });
-
-        let avgTimeMs = 0;
-        if (completedJobs.length > 0) {
-          const totalTime = completedJobs.reduce((acc, job) => {
-            const duration = new Date(job.completedAt!).getTime() - new Date(job.startedAt!).getTime();
-            return acc + duration;
-          }, 0);
-          avgTimeMs = totalTime / completedJobs.length;
-        }
-
-        return {
-          userId: member.id,
-          fullName: member.fullName,
-          email: member.email,
-          activeJobs,
-          queuedJobs,
-          totalLoad: activeJobs + queuedJobs,
-          avgCompletionTimeMs: Math.round(avgTimeMs)
-        };
+    // Two batch queries replace 4 × per-member queries
+    const [countRows, completedJobRows] = await Promise.all([
+      prisma.job.groupBy({
+        by: ['userId', 'status'],
+        where: {
+          userId: { in: teamMemberIds },
+          status: { in: [JobStatus.ACTIVE, JobStatus.PENDING] }
+        },
+        _count: { id: true }
+      }),
+      prisma.job.findMany({
+        where: {
+          userId: { in: teamMemberIds },
+          status: JobStatus.COMPLETED,
+          startedAt: { not: null },
+          completedAt: { not: null }
+        },
+        select: { userId: true, startedAt: true, completedAt: true },
+        take: 50 * teamMemberIds.length
       })
+    ]);
+
+    type LoadEntry = { activeJobs: number; queuedJobs: number };
+    const loadByUser = new Map<string, LoadEntry>(
+      teamMemberIds.map(id => [id, { activeJobs: 0, queuedJobs: 0 }])
     );
+    for (const row of countRows) {
+      const entry = loadByUser.get(row.userId)!;
+      if (row.status === JobStatus.ACTIVE) entry.activeJobs = row._count.id;
+      else if (row.status === JobStatus.PENDING) entry.queuedJobs = row._count.id;
+    }
+
+    const durationByUser = new Map<string, { totalMs: number; count: number }>(
+      teamMemberIds.map(id => [id, { totalMs: 0, count: 0 }])
+    );
+    for (const job of completedJobRows) {
+      const entry = durationByUser.get(job.userId);
+      if (entry && job.startedAt && job.completedAt) {
+        entry.totalMs += new Date(job.completedAt).getTime() - new Date(job.startedAt).getTime();
+        entry.count += 1;
+      }
+    }
+
+    const workloadData = teamMembers.map(member => {
+      const load = loadByUser.get(member.id)!;
+      const dur = durationByUser.get(member.id)!;
+      return {
+        userId: member.id,
+        fullName: member.fullName,
+        email: member.email,
+        activeJobs: load.activeJobs,
+        queuedJobs: load.queuedJobs,
+        totalLoad: load.activeJobs + load.queuedJobs,
+        avgCompletionTimeMs: dur.count > 0 ? Math.round(dur.totalMs / dur.count) : 0
+      };
+    });
 
     // Sort by total load descending
     workloadData.sort((a, b) => b.totalLoad - a.totalLoad);
