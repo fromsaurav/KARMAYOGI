@@ -23,6 +23,18 @@ A production-grade distributed task queue system with real-time monitoring, role
 * **Manager** — Team oversight, workload balancing, job assignment
 * **Admin** — System-wide control, worker scaling, analytics
 
+#### Job Access Rules
+
+Access to job data (comments, watchers, activity feed, kanban board, status updates) is enforced consistently across all API endpoints:
+
+| Role | Scope |
+|------|-------|
+| **USER** | Own jobs only — requests for another user's job return `403` |
+| **MANAGER** | Own jobs plus jobs owned by direct reports (`user.managerId`) |
+| **ADMIN** | Unrestricted — all jobs in the system |
+
+These rules are implemented in `src/middleware/jobAccess.ts` via the `assertJobAccess(jobId, userId, role)` helper, which is called at the top of every read and write endpoint that is scoped to a specific job.
+
 ### ⚡ High-Performance Workers
 
 * **Go-powered Processing** — Concurrent job execution with gRPC
