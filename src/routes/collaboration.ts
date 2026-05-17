@@ -5,13 +5,14 @@ import express, { Request, Response } from 'express';
 import { protectRoute } from '../middleware/protectRoute';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger';
+import { assertJobAccess } from '../middleware/jobAccess';
+import { UserRole } from '../types';
 import {
   broadcastNewComment,
   broadcastCommentUpdate,
   broadcastCommentDelete,
   broadcastJobHandoff,
   broadcastWatcherChange,
-  broadcastMention
 } from '../services/websocket';
 
 const prisma = new PrismaClient();
@@ -86,6 +87,14 @@ router.post('/jobs/:jobId/comments', async (req: Request, res: Response) => {
 router.get('/jobs/:jobId/comments', async (req: Request, res: Response) => {
   try {
     const { jobId } = req.params;
+    const { userId, role } = req.user!;
+
+    try {
+      await assertJobAccess(jobId, userId, role as UserRole);
+    } catch (err: any) {
+      res.status(err.statusCode ?? 403).json({ success: false, message: err.message });
+      return;
+    }
 
     const comments = await prisma.jobComment.findMany({
       where: { jobId },
