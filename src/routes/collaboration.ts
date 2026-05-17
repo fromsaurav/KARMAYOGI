@@ -259,6 +259,14 @@ router.delete('/jobs/:jobId/watch', async (req: Request, res: Response) => {
 router.get('/jobs/:jobId/watchers', async (req: Request, res: Response) => {
   try {
     const { jobId } = req.params;
+    const { userId, role } = req.user!;
+
+    try {
+      await assertJobAccess(jobId, userId, role as UserRole);
+    } catch (err: any) {
+      res.status(err.statusCode ?? 403).json({ success: false, message: err.message });
+      return;
+    }
 
     const watchers = await prisma.jobWatcher.findMany({
       where: { jobId },
@@ -362,6 +370,14 @@ router.post('/jobs/:jobId/handoff', async (req: Request, res: Response) => {
 router.get('/jobs/:jobId/activity', async (req: Request, res: Response) => {
   try {
     const { jobId } = req.params;
+    const { userId, role } = req.user!;
+
+    try {
+      await assertJobAccess(jobId, userId, role as UserRole);
+    } catch (err: any) {
+      res.status(err.statusCode ?? 403).json({ success: false, message: err.message });
+      return;
+    }
 
     const [comments, handoffs, statusChanges] = await Promise.all([
       prisma.jobComment.findMany({
