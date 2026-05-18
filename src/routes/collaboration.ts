@@ -130,7 +130,7 @@ router.put('/comments/:commentId', async (req: Request, res: Response) => {
   try {
     const { commentId } = req.params;
     const { content } = req.body;
-    const userId = req.user!.userId;
+    const { userId, role } = req.user!;
 
     const existingComment = await prisma.jobComment.findUnique({
       where: { id: commentId }
@@ -143,6 +143,14 @@ router.put('/comments/:commentId', async (req: Request, res: Response) => {
 
     if (existingComment.userId !== userId) {
       res.status(403).json({ success: false, message: 'You can only edit your own comments' });
+      return;
+    }
+
+    // Verify the requesting user still has access to the parent job
+    try {
+      await assertJobAccess(existingComment.jobId, userId, role as UserRole);
+    } catch (err: any) {
+      res.status(err.statusCode ?? 403).json({ success: false, message: err.message });
       return;
     }
 
