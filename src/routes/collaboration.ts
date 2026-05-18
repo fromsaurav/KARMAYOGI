@@ -26,7 +26,14 @@ router.post('/jobs/:jobId/comments', async (req: Request, res: Response) => {
   try {
     const { jobId } = req.params;
     const { content } = req.body;
-    const userId = req.user!.userId;
+    const { userId, role } = req.user!;
+
+    try {
+      await assertJobAccess(jobId, userId, role as UserRole);
+    } catch (err: any) {
+      res.status(err.statusCode ?? 403).json({ success: false, message: err.message });
+      return;
+    }
 
     if (!content || content.trim().length === 0) {
       res.status(400).json({ success: false, message: 'Comment content is required' });
