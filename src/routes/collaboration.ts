@@ -335,13 +335,19 @@ router.post('/jobs/:jobId/handoff', async (req: Request, res: Response) => {
       return;
     }
 
-    // Verify target user exists
+    // Verify target user exists and is active
     const toUser = await prisma.user.findUnique({
-      where: { id: toUserId }
+      where: { id: toUserId },
+      select: { id: true, isActive: true }
     });
 
     if (!toUser) {
       res.status(404).json({ success: false, message: 'Target user not found' });
+      return;
+    }
+
+    if (!toUser.isActive) {
+      res.status(422).json({ success: false, message: 'Cannot hand off to an inactive user' });
       return;
     }
 
