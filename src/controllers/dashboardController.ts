@@ -116,7 +116,14 @@ export async function getManagerStats(req: Request, res: Response): Promise<void
     const recentTeamJobs = await prisma.job.findMany({
       orderBy: { createdAt: 'desc' },
       take: 20,
-      include: {
+      select: {
+        id: true,
+        type: true,
+        status: true,
+        priority: true,
+        createdAt: true,
+        completedAt: true,
+        progress: true,
         user: {
           select: {
             id: true,
