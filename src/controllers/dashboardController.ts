@@ -22,14 +22,18 @@ export async function getUserStats(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Get user's job statistics
-    const [totalJobs, completedJobs, activeJobs, failedJobs, pendingJobs] = await Promise.all([
-      prisma.job.count({ where: { userId } }),
-      prisma.job.count({ where: { userId, status: JobStatus.COMPLETED } }),
-      prisma.job.count({ where: { userId, status: JobStatus.ACTIVE } }),
-      prisma.job.count({ where: { userId, status: JobStatus.FAILED } }),
-      prisma.job.count({ where: { userId, status: JobStatus.PENDING } })
-    ]);
+    // Get user's job statistics — single groupBy instead of 5 count queries
+    const statusCounts = await prisma.job.groupBy({
+      by: ['status'],
+      where: { userId },
+      _count: { id: true }
+    });
+    const countByStatus = new Map(statusCounts.map(r => [r.status, r._count.id]));
+    const completedJobs = countByStatus.get(JobStatus.COMPLETED) ?? 0;
+    const activeJobs    = countByStatus.get(JobStatus.ACTIVE)    ?? 0;
+    const failedJobs    = countByStatus.get(JobStatus.FAILED)    ?? 0;
+    const pendingJobs   = countByStatus.get(JobStatus.PENDING)   ?? 0;
+    const totalJobs     = [...countByStatus.values()].reduce((a, b) => a + b, 0);
 
     // Get recent jobs (last 10)
     const recentJobs = await prisma.job.findMany({
