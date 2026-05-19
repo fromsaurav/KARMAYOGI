@@ -156,12 +156,19 @@ describe('GET /api/jobs/kanban — ownership scoping (R1)', () => {
     expect(allJobs.every((j: any) => j.id === 'job-own')).toBe(true);
   });
 
-  it('uses take: 200 not the old hardcoded 1000', async () => {
+  it('defaults to take: 50 and respects ?limit cap of 200', async () => {
     setUser('USER', 'user-1');
 
+    // Default request uses limit=50
     await request(app).get('/api/jobs/kanban');
+    const defaultCall = mockPrismaInstance.job.findMany.mock.calls[0][0];
+    expect(defaultCall.take).toBe(50);
 
-    const findManyCall = mockPrismaInstance.job.findMany.mock.calls[0][0];
-    expect(findManyCall.take).toBe(200);
+    mockPrismaInstance.job.findMany.mockClear();
+
+    // Requesting limit=300 is capped to 200
+    await request(app).get('/api/jobs/kanban?limit=300');
+    const cappedCall = mockPrismaInstance.job.findMany.mock.calls[0][0];
+    expect(cappedCall.take).toBe(200);
   });
 });

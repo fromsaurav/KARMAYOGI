@@ -461,6 +461,10 @@ export async function getKanbanJobs(req: Request, res: Response): Promise<void> 
       return;
     }
 
+    const { limit = '50', offset = '0' } = req.query;
+    const take = Math.min(Math.max(parseInt(limit as string) || 50, 1), 200);
+    const skip = Math.max(parseInt(offset as string) || 0, 0);
+
     // Regular users see only their own jobs; managers and admins see all
     const where = (userRole === UserRole.MANAGER || userRole === UserRole.ADMIN)
       ? {}
@@ -476,7 +480,8 @@ export async function getKanbanJobs(req: Request, res: Response): Promise<void> 
       orderBy: {
         priority: 'desc'
       },
-      take: 200
+      take,
+      skip
     });
 
     type DbJobRow = typeof jobs[number];
@@ -543,7 +548,8 @@ export async function getKanbanJobs(req: Request, res: Response): Promise<void> 
     res.json({
       success: true,
       message: 'Kanban jobs retrieved successfully',
-      jobs: groupedJobs
+      jobs: groupedJobs,
+      pagination: { limit: take, offset: skip, count: jobs.length }
     });
 
   } catch (error) {
