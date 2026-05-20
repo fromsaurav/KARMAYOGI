@@ -1,8 +1,7 @@
 import Bull from 'bull';
-import { redisClient } from '../utils/redis';
 import { config } from '../utils/config';
 import { logger } from '../utils/logger';
-import { JobData, JobPriority, JobType } from '../types';
+import { JobData, JobPriority } from '../types';
 
 interface QueueConfig {
   name: string;
@@ -74,12 +73,9 @@ export async function initializeQueues(): Promise<void> {
       logger.info(`Queue ${queueConfig.name} initialized with concurrency ${queueConfig.concurrency}`);
     }
 
-    // Create dead letter queue for failed jobs
+    // Create dead letter queue for failed jobs — same Redis as all other queues
     const deadLetterQueue = new Bull('dead-letter', {
-      redis: {
-        port: 6379,
-        host: 'localhost',
-      },
+      redis: config.redis.url,
     });
 
     queues.set('dead-letter', deadLetterQueue);
@@ -138,7 +134,7 @@ export async function addJob(jobData: JobData): Promise<Bull.Job> {
 
 export async function getJob(jobId: string): Promise<Bull.Job | null> {
   try {
-    for (const [queueName, queue] of queues) {
+    for (const queue of queues.values()) {
       const job = await queue.getJob(jobId);
       if (job) {
         return job;
