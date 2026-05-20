@@ -1,5 +1,5 @@
 import { Server as HttpServer } from 'http';
-import { Server as SocketServer } from 'socket.io';
+import { Server as SocketServer, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { config } from '../utils/config';
 import { logger } from '../utils/logger';
@@ -10,7 +10,48 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 let io: SocketServer;
 let presenceService: PresenceService;
-const connectedUsers = new Map<string, Set<string>>(); // userId -> Set of socket IDs
+const connectedUsers = new Map<string, Set<string>>();
+
+export const HEARTBEAT_INTERVAL_MS = 30_000;
+
+// Extracted so unit tests can exercise it directly without a live server
+export async function authenticateSocket(
+  socket: Socket,
+  next: (err?: Error) => void
+): Promise<void> {
+  try {
+    const token =
+      socket.handshake.auth.token ||
+      socket.handshake.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      return next(new Error('Authentication token required'));
+    }
+
+    // jwt.verify validates the exp claim by default; catch TokenExpiredError
+    // separately so the client receives a structured 4001 code
+    const decoded = jwt.verify(token, config.jwt.secret) as AuthTokenPayload;
+    socket.data.user = decoded;
+
+    logger.info('WebSocket client authenticated', {
+      socketId: socket.id,
+      userId: decoded.userId,
+      email: decoded.email,
+    });
+
+    next();
+  } catch (error) {
+    logger.error('WebSocket authentication failed:', error);
+
+    if (error instanceof jwt.TokenExpiredError) {
+      const err = new Error('Token expired');
+      (err as any).data = { code: 4001 };
+      return next(err);
+    }
+
+    next(new Error('Authentication failed'));
+  }
+}
 
 export function initializeWebSocket(server: HttpServer): void {
   io = new SocketServer(server, {
@@ -22,35 +63,30 @@ export function initializeWebSocket(server: HttpServer): void {
     transports: ['websocket', 'polling']
   });
 
-  // Authentication middleware for Socket.IO
-  io.use(async (socket, next) => {
-    try {
-      const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
+  // Authentication middleware — delegates to authenticateSocket for testability
+  io.use(authenticateSocket);
 
-      if (!token) {
-        return next(new Error('Authentication token required'));
+  // Heartbeat: terminate sockets that stopped responding to server:ping
+  const heartbeatTimer = setInterval(() => {
+    io.sockets.sockets.forEach((socket) => {
+      if (!socket.data.isAlive) {
+        socket.disconnect(true);
+        return;
       }
+      socket.data.isAlive = false;
+      socket.emit('server:ping');
+    });
+  }, HEARTBEAT_INTERVAL_MS);
 
-      const decoded = jwt.verify(token, config.jwt.secret) as AuthTokenPayload;
-      socket.data.user = decoded;
-
-      logger.info('WebSocket client authenticated', {
-        socketId: socket.id,
-        userId: decoded.userId,
-        email: decoded.email
-      });
-
-      next();
-    } catch (error) {
-      logger.error('WebSocket authentication failed:', error);
-      next(new Error('Authentication failed'));
-    }
-  });
+  io.on('close', () => clearInterval(heartbeatTimer));
 
   // Initialize presence service
   presenceService = new PresenceService(io);
 
   io.on('connection', async (socket) => {
+    socket.data.isAlive = true;
+    socket.on('client:pong', () => { socket.data.isAlive = true; });
+
     const user = socket.data.user as AuthTokenPayload;
 
     // Fetch full user details from database
