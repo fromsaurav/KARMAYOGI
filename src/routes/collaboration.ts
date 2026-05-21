@@ -58,7 +58,6 @@ router.post('/jobs/:jobId/comments', async (req: Request, res: Response) => {
       }
     });
 
-    // Extract @mentions (simplified - in production would use proper username lookup)
     const mentions = extractMentions(content);
 
     logger.info(`Comment added to job ${jobId} by user ${userId}`, {
@@ -66,18 +65,11 @@ router.post('/jobs/:jobId/comments', async (req: Request, res: Response) => {
       mentions: mentions.length
     });
 
-    // Broadcast real-time comment to job watchers
     broadcastNewComment(jobId, comment);
 
-    // Broadcast @mention notifications
-    if (mentions.length > 0) {
-      // In production, look up user IDs from usernames
-      // For now, log the mentions
-      mentions.forEach(mentionedUsername => {
-        logger.info(`@mention detected for ${mentionedUsername} in comment ${comment.id}`);
-        // broadcastMention(mentionedUserId, { jobId, commentId: comment.id, content });
-      });
-    }
+    mentions.forEach(mentionedUsername => {
+      logger.info(`@mention detected for ${mentionedUsername} in comment ${comment.id}`);
+    });
 
     res.status(201).json({
       success: true,

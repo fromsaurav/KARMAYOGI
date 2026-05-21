@@ -326,7 +326,7 @@ export function getConnectionStats(): any {
   return {
     totalConnections: sockets.size,
     uniqueUsers: uniqueUsers.size,
-    adminConnections: 0, // Will be implemented when RBAC is added
+    adminConnections: 0,
     rooms: Array.from(io.sockets.adapter.rooms.keys()).filter(room => !sockets.has(room))
   };
 }
