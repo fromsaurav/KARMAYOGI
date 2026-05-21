@@ -16,6 +16,7 @@ A production-grade distributed task queue system with real-time monitoring, role
 * **Priority Queues** — HIGH, MEDIUM, LOW priority job processing
 * **Job Dependencies** — Chain jobs and orchestrate parallel flows
 * **Real-time Progress** — Live job status and progress tracking
+* **Kanban Pagination** — `GET /api/jobs/kanban?limit=50&offset=0` (default 50, max 200)
 
 ### 👥 Role-Based Access Control
 
@@ -58,9 +59,10 @@ These rules are implemented in `src/middleware/jobAccess.ts` via the `assertJobA
 
 ### 🔐 Enterprise Security
 
-* **JWT Authentication** — HTTP-only cookies
+* **JWT Authentication** — HTTP-only cookies with explicit expiry validation on every WebSocket connection
 * **Audit Logs** — Full compliance trail
-* **WebSocket Security** — Role-based broadcast rooms
+* **WebSocket Security** — Role-based broadcast rooms; connections authenticated via `authenticateSocket` middleware that returns close code `4001` on expired tokens
+* **WebSocket Heartbeat** — Server sends `server:ping` every 30 s; sockets that do not reply with `client:pong` are terminated automatically to prevent stale connection accumulation
 * **User Presence** — Real-time online tracking
 
 ---
@@ -288,7 +290,14 @@ go build -o ../../bin/worker
 
 * Check `NEXT_PUBLIC_WS_URL`
 * Verify CORS
-* Ensure JWT token validity
+* Ensure JWT token is valid and not expired — the server returns close code `4001` for expired tokens
+* Client must respond to `server:ping` with `client:pong` within the 30 s heartbeat window or the connection will be terminated
+
+---
+
+## 📝 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the full history of improvements.
 
 ---
 
