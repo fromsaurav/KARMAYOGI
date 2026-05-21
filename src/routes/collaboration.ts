@@ -416,9 +416,9 @@ router.get('/jobs/:jobId/activity', async (req: Request, res: Response) => {
 
     // Combine and sort by timestamp
     const activity = [
-      ...comments.map((c: any) => ({ type: 'comment', ...c })),
-      ...handoffs.map((h: any) => ({ type: 'handoff', ...h })),
-      ...statusChanges.map((s: any) => ({ type: 'status_change', ...s }))
+      ...comments.map(c => ({ type: 'comment' as const, ...c })),
+      ...handoffs.map(h => ({ type: 'handoff' as const, ...h })),
+      ...statusChanges.map(s => ({ type: 'status_change' as const, ...s }))
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     res.json({ success: true, data: activity, count: activity.length });
